@@ -135,6 +135,11 @@ function ProductCard({ item, onAddToCart }) {
       onAddToCart(item, finalPieces, finalPrice);
       setCustomPieces(1);
       setUseManualPieces(false);
+    } else if (item.category === 'chicken' || item.category === 'mutton' || item.category === 'goat') {
+      const finalWeight = customGms || 500;
+      const finalPrice = Math.round((item.price * (finalWeight / 1000)));
+      onAddToCart(item, finalWeight, finalPrice);
+      setCustomGms(500);
     } else {
       const finalWeight = customGms || 500;
       const finalPrice = calculateWeightPrice(item, finalWeight);
@@ -293,6 +298,32 @@ function ProductCard({ item, onAddToCart }) {
               </div>
             )}
           </div>
+        ) : item.category === 'chicken' || item.category === 'mutton' || item.category === 'goat' ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={customGms}
+                onChange={(e) => setCustomGms(Number(e.target.value))}
+                placeholder="Enter grams"
+                min="100"
+                step="50"
+                className="flex-1 text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500"
+              />
+              <button
+                onClick={handleAddClick}
+                className="flex-shrink-0 flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+              >
+                <span className="hidden sm:inline">Add</span>
+                <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                  <PlusIcon />
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Total: ₹{Math.round((item.price * (customGms / 1000)))}
+            </p>
+          </div>
         ) : (
           <div className="space-y-2">
             <div className="flex items-center justify-between mb-2">
@@ -353,16 +384,16 @@ function Home() {
 
   // --- UPDATED: Using new icon URLs that better match the Figma design ---
   const mindCategories = [
-    { key: 'chicken', label: 'Chicken', imageUrl: 'https://www.svgrepo.com/show/506306/chicken.svg' },
-    { key: 'mutton', label: 'Mutton', imageUrl: 'https://www.svgrepo.com/show/493774/goat.svg' },
-    { key: 'eggs', label: 'Eggs', imageUrl: 'https://www.svgrepo.com/show/532309/eggs.svg' },
-    { key: 'masala', label: 'Masala', imageUrl: 'https://www.svgrepo.com/show/423337/spice-bowl-cook.svg' },
+    { key: 'chicken', label: 'Chicken', imageUrl: 'https://assets.tendercuts.in/product/R/M/ae6849a6-0699-4617-a963-382e93cf8940.webp' },
+    { key: 'mutton', label: 'Mutton', imageUrl: 'https://assets.tendercuts.in/product/R/M/2fa6b2bd-884e-4ecb-ac32-09bd7134a854.webp' },
+    { key: 'eggs', label: 'Eggs', imageUrl: 'https://assets.tendercuts.in/product/c/h/chk_egg.jpg' },
+    { key: 'masalas', label: 'Masala', imageUrl: 'https://images.pexels.com/photos/2802527/pexels-photo-2802527.jpeg' },
   ];
 
   const heroCarouselData = [
-    { id: 1, imageUrl: taazaBanner, alt: "Taaza Fresh Delivery" },
-    { id: 2, imageUrl: banner2, alt: "Fresh Chicken, Eggs, and Meat" },
-    { id: 3, imageUrl: banner3, alt: "Chicken and Spices" },
+    { id: 1, imageUrl: taazaBanner, alt: "Taaza Fresh Delivery", categoryKey: "chicken" },
+    { id: 2, imageUrl: banner2, alt: "Fresh Chicken, Eggs, and Meat", categoryKey: "eggs" },
+    { id: 3, imageUrl: banner3, alt: "Chicken and Spices", categoryKey: "masala" },
   ];
 
   const heroCarouselSettings = {
@@ -428,7 +459,7 @@ function Home() {
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
 
   return (
-    <div className="bg-white relative pb-24 lg:pb-0">
+    <div className="relative pb-24 lg:pb-0">
       <div className={`fixed bottom-24 lg:bottom-5 right-5 bg-green-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 ease-in-out z-50 ${showSuccess ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
         ✅ {successMessage}
       </div>
@@ -469,38 +500,45 @@ function Home() {
           <div className="relative">
           <Slider {...heroCarouselSettings}>
             {heroCarouselData.map((slide) => (
-              <div key={slide.id}>
-                  <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[500px] w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl">
-                    {/* Professional gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent z-10"></div>
-                    
+              <div
+                key={slide.id}
+                className="cursor-pointer"
+                onClick={() => {
+                  if (slide.categoryKey) {
+                    scrollToCategory(slide.categoryKey);
+                  }
+                }}
+              >
+                <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[500px] w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/30 to-transparent z-10"></div>
                   <img
                     src={slide.imageUrl}
                     alt={slide.alt}
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    {/* Professional content overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center sm:justify-start z-20 p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
-                      <div className="w-full sm:max-w-lg">
-                        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl sm:shadow-2xl border border-white/20">
-                          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2 sm:mb-4 leading-tight">
-                            {slide.alt}
-                          </h2>
-                          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                            Discover our carefully curated selection of premium cuts
-                          </p>
-                          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                            <button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
-                              Shop Now
-                            </button>
-                            <button className="border-2 border-gray-300 hover:border-green-600 text-gray-700 hover:text-green-600 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300">
-                              Learn More
-                            </button>
-                          </div>
-                        </div>
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center sm:justify-start z-20 p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
+                    <div className="w-full sm:max-w-lg">
+                      <div className="bg-white/30 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl sm:shadow-2xl border border-white/20">
+                        <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2 sm:mb-4 leading-tight">
+                          {slide.alt}
+                        </h2>
+                        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+                          Discover our carefully curated selection of premium cuts
+                        </p>
+                        <button
+                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (slide.categoryKey) {
+                              scrollToCategory(slide.categoryKey);
+                            }
+                          }}
+                        >
+                          Shop {slide.categoryKey ? slide.categoryKey.charAt(0).toUpperCase() + slide.categoryKey.slice(1) : "Now"}
+                        </button>
                       </div>
                     </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -551,16 +589,40 @@ function Home() {
       <div className="w-full bg-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading>Explore by Category</SectionHeading>
-          <div className="hidden lg:grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-x-4 lg:gap-x-6 gap-y-6 text-center">
+          {windowWidth >= DESKTOP_BREAKPOINT ? (
+            <div className="flex justify-center items-start gap-x-16 lg:gap-x-24">
             {mindCategories.map((cat) => (
-              <div key={cat.key} onClick={() => scrollToCategory(cat.key)} className="flex flex-col items-center space-y-2 cursor-pointer group">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-200 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                  <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-contain bg-white p-2" />
+                <div
+                  key={cat.key}
+                  onClick={() => scrollToCategory(cat.key)}
+                  className="flex flex-col items-center space-y-3 cursor-pointer group w-28 text-center"
+                >
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-red-400 transition-all duration-300 shadow-md group-hover:shadow-lg bg-white">
+                    <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-semibold text-gray-700 group-hover:text-red-600 text-sm capitalize">
+                    {cat.label}
+                  </span>
                 </div>
-                <span className="font-semibold text-gray-700 group-hover:text-red-600 text-xs sm:text-sm lg:text-base capitalize text-center">{cat.label}</span>
+              ))}
+            </div>
+          ) : (
+            <Slider {...productSliderSettings}>
+              {mindCategories.map((cat) => (
+                <div key={cat.key} className="px-2">
+                  <div
+                    onClick={() => scrollToCategory(cat.key)}
+                    className="flex flex-col items-center space-y-2 cursor-pointer group text-center"
+                  >
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm bg-white">
+                      <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="font-semibold text-gray-600 text-xs capitalize">{cat.label}</span>
+                  </div>
               </div>
             ))}
-          </div>
+            </Slider>
+          )}
         </div>
       </div>
 
