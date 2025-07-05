@@ -12,7 +12,7 @@ function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   // Add unitWeight for masalas, remove previous masala price fields
-  const [form, setForm] = useState({ name: '', category: '', price: '', image: null, quantity: '', price6: '', price12: '', price30: '', unitWeight: '' });
+  const [form, setForm] = useState({ name: '', category: '', price: '', image: null, quantity: '', pricePerEgg: '', price6: '', price12: '', price30: '', unitWeight: '' });
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState(null);
   const [editingPriceId, setEditingPriceId] = useState(null);
@@ -40,7 +40,7 @@ function AdminProducts() {
 
   const getInitialFormState = () => ({
     name: '', category: '', price: '', image: null, quantity: '',
-    price6: '', price12: '', price30: '', unitWeight: ''
+    pricePerEgg: '', price6: '', price12: '', price30: '', unitWeight: ''
   });
 
   const showToast = (message, type = "success") => {
@@ -58,6 +58,17 @@ function AdminProducts() {
       reader.readAsDataURL(files[0]);
     } else {
       setForm(f => ({ ...f, [name]: value }));
+      
+      // Auto-calculate eggs prices when pricePerEgg changes
+      if (name === 'pricePerEgg' && form.category === 'eggs') {
+        const pricePerEgg = parseFloat(value) || 0;
+        setForm(f => ({
+          ...f,
+          price6: (pricePerEgg * 6).toFixed(2),
+          price12: (pricePerEgg * 12).toFixed(2),
+          price30: (pricePerEgg * 30).toFixed(2)
+        }));
+      }
     }
   };
 
@@ -67,7 +78,7 @@ function AdminProducts() {
     // 1. Validate fields based on category
     let validationError = false;
     if (form.category === 'eggs') {
-      if (!form.name || !form.category || !form.price6 || !form.price12 || !form.price30 || !form.quantity || (!form.image && !editingId)) {
+      if (!form.name || !form.category || !form.pricePerEgg || !form.quantity || (!form.image && !editingId)) {
         validationError = true;
       }
     } else if (form.category === 'masalas') {
@@ -103,9 +114,10 @@ function AdminProducts() {
         quantity: Number(form.quantity),
         imageUrl: imageUrl,
         ...(form.category === 'eggs' && {
-          price6: Number(form.price6),
-          price12: Number(form.price12),
-          price30: Number(form.price30),
+          pricePerEgg: Number(form.pricePerEgg),
+          price6: Number(form.pricePerEgg) * 6,
+          price12: Number(form.pricePerEgg) * 12,
+          price30: Number(form.pricePerEgg) * 30,
         }),
         ...(form.category === 'masalas' && {
           price: Number(form.price),
@@ -139,6 +151,7 @@ function AdminProducts() {
       price: p.price || '',
       image: p.imageUrl,
       quantity: p.quantity,
+      pricePerEgg: p.pricePerEgg || '',
       price6: p.price6 || '',
       price12: p.price12 || '',
       price30: p.price30 || '',
@@ -168,8 +181,37 @@ function AdminProducts() {
       await updateDoc(doc(db, 'products', id), { price: Number(newPrice) });
       setEditingPriceId(null);
       setNewPrice('');
+      showToast("Price updated successfully", "success");
     } catch (err) {
       showToast("Failed to update price.", 'error');
+    }
+  };
+
+  // Eggs-specific price editing
+  const [editingEggsPriceId, setEditingEggsPriceId] = useState(null);
+  const [newEggsPrice, setNewEggsPrice] = useState({ pricePerEgg: '' });
+
+  const handleEggsPriceEdit = (product) => {
+    setEditingEggsPriceId(product.id);
+    setNewEggsPrice({
+      pricePerEgg: product.pricePerEgg || ''
+    });
+  };
+
+  const handleEggsPriceSave = async (id) => {
+    try {
+      const pricePerEgg = Number(newEggsPrice.pricePerEgg);
+      await updateDoc(doc(db, 'products', id), {
+        pricePerEgg: pricePerEgg,
+        price6: pricePerEgg * 6,
+        price12: pricePerEgg * 12,
+        price30: pricePerEgg * 30
+      });
+      setEditingEggsPriceId(null);
+      setNewEggsPrice({ pricePerEgg: '' });
+      showToast("Eggs price updated successfully", "success");
+    } catch (err) {
+      showToast("Failed to update eggs price.", 'error');
     }
   };
 
@@ -196,10 +238,22 @@ function AdminProducts() {
             {/* === Conditional Inputs for Categories === */}
             {form.category === 'eggs' ? (
               <>
-                <input name="price6" value={form.price6} onChange={handleChange} placeholder="Price (₹) for 6 Eggs" type="number" className="p-3 border-2 border-slate-200 rounded-xl w-full" required />
-                <input name="price12" value={form.price12} onChange={handleChange} placeholder="Price (₹) for 12 Eggs" type="number" className="p-3 border-2 border-slate-200 rounded-xl w-full" required />
-                <input name="price30" value={form.price30} onChange={handleChange} placeholder="Price (₹) for 30 Eggs" type="number" className="p-3 border-2 border-slate-200 rounded-xl w-full" required />
-                <input name="quantity" value={form.quantity} onChange={handleChange} placeholder="Total Eggs in Stock" type="number" min="0" className="p-3 border-2 border-slate-200 rounded-xl w-full" required />
+                <input name="pricePerEgg" value={form.pricePerEgg} onChange={handleChange} placeholder="Price (₹) per Egg" type="number" step="0.01" className="p-3 border-2 border-slate-200 rounded-xl w-full focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all duration-200 bg-white/90 text-slate-900 font-medium shadow-sm" style={{ fontFamily: 'Inter, sans-serif' }} required />
+                <input name="quantity" value={form.quantity} onChange={handleChange} placeholder="Total Eggs in Stock (pieces)" type="number" min="0" className="p-3 border-2 border-slate-200 rounded-xl w-full focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all duration-200 bg-white/90 text-slate-900 font-medium shadow-sm" style={{ fontFamily: 'Inter, sans-serif' }} required />
+                <div className="col-span-2 bg-blue-50 p-3 rounded-xl border border-blue-200">
+                  <p className="text-sm text-blue-800 font-medium mb-2">📊 Calculated Prices:</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-white p-2 rounded border">
+                      <span className="font-semibold">6 eggs:</span> ₹{form.pricePerEgg ? (form.pricePerEgg * 6).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="bg-white p-2 rounded border">
+                      <span className="font-semibold">12 eggs:</span> ₹{form.pricePerEgg ? (form.pricePerEgg * 12).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="bg-white p-2 rounded border">
+                      <span className="font-semibold">30 eggs:</span> ₹{form.pricePerEgg ? (form.pricePerEgg * 30).toFixed(2) : '0.00'}
+                    </div>
+                  </div>
+                </div>
               </>
             ) : form.category === 'masalas' ? (
               <>
@@ -240,8 +294,70 @@ function AdminProducts() {
                     {/* === Conditional Card Display === */}
                     {product.category === 'eggs' ? (
                       <>
-                        <p className="text-slate-600 text-sm">Price: <span className="font-medium text-slate-700">₹{product.price6} (6), ₹{product.price12} (12), ₹{product.price30} (30)</span></p>
-                        <p className="text-slate-600 text-sm">Stock: <span className="font-medium text-slate-700">{product.quantity} eggs</span></p>
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600">🥚 6 eggs:</span>
+                            <span className="font-bold text-slate-700">₹{product.price6}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600">🥚 12 eggs:</span>
+                            <span className="font-bold text-slate-700">₹{product.price12}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600">🥚 30 eggs:</span>
+                            <span className="font-bold text-slate-700">₹{product.price30}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-600 font-medium">📦 Available:</span>
+                          <span className={`text-sm font-bold ${(product.quantity || 0) > 10 ? 'text-green-600' : (product.quantity || 0) > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {product.quantity || 0} eggs
+                          </span>
+                        </div>
+                        
+                        {/* Eggs Price Editing */}
+                        {editingEggsPriceId === product.id ? (
+                          <div className="mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                            <div className="space-y-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={newEggsPrice.pricePerEgg}
+                                onChange={(e) => setNewEggsPrice({...newEggsPrice, pricePerEgg: e.target.value})}
+                                placeholder="Price per egg"
+                                className="w-full text-xs p-2 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400"
+                              />
+                              <div className="text-xs text-slate-600 bg-white p-2 rounded border">
+                                <div className="grid grid-cols-3 gap-1">
+                                  <span>6 eggs: ₹{(newEggsPrice.pricePerEgg * 6).toFixed(2)}</span>
+                                  <span>12 eggs: ₹{(newEggsPrice.pricePerEgg * 12).toFixed(2)}</span>
+                                  <span>30 eggs: ₹{(newEggsPrice.pricePerEgg * 30).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleEggsPriceSave(product.id)}
+                                className="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-green-700"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingEggsPriceId(null)}
+                                className="flex-1 bg-slate-400 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-slate-500"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleEggsPriceEdit(product)}
+                            className="mt-2 w-full bg-yellow-100 text-yellow-800 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-yellow-200 transition shadow-sm"
+                          >
+                            🥚 Edit Price
+                          </button>
+                        )}
                       </>
                     ) : product.category === 'masalas' ? (
                        <>

@@ -19,6 +19,13 @@ function AdminDashboard() {
   // State for different types of quantity input
   const [itemWeight, setItemWeight] = useState(500); // For meat (in grams)
   const [itemPieceQuantity, setItemPieceQuantity] = useState(1); // For masalas (in pieces)
+  const [eggsQuantity, setEggsQuantity] = useState(6); // For eggs (in pieces)
+  
+  // Manual input states
+  const [manualWeight, setManualWeight] = useState(500); // Manual weight input
+  const [manualPieces, setManualPieces] = useState(1); // Manual pieces input
+  const [manualEggs, setManualEggs] = useState(6); // Manual eggs input
+  const [useManualInput, setUseManualInput] = useState(false); // Toggle for manual input
 
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' });
   const [loading, setLoading] = useState(true);
@@ -76,11 +83,24 @@ function AdminDashboard() {
     return Math.round((item.price * (weight / 1000)));
   };
 
+  // Eggs-specific price calculation
+  const calculateEggsPrice = (item, quantity) => {
+    if (quantity === 6) return item.price6 || (item.pricePerEgg * 6) || 0;
+    if (quantity === 12) return item.price12 || (item.pricePerEgg * 12) || 0;
+    if (quantity === 30) return item.price30 || (item.pricePerEgg * 30) || 0;
+    return (item.pricePerEgg || 0) * quantity;
+  };
+
   const handleAddToCartClick = (item) => {
     setSelectedItem(item);
     // Reset inputs to defaults when opening modal
     setItemWeight(500);
     setItemPieceQuantity(1);
+    setEggsQuantity(6);
+    setManualWeight(500);
+    setManualPieces(1);
+    setManualEggs(6);
+    setUseManualInput(false);
     setShowCustomerForm(true);
   };
 
@@ -97,36 +117,56 @@ function AdminDashboard() {
       }
       const currentQty = productSnap.data().quantity || 0;
 
+      // --- LOGIC FOR EGGS (BY PIECE) ---
+      if (item.category === 'eggs') {
+        const finalEggsQuantity = useManualInput ? manualEggs : eggsQuantity;
+        if (currentQty < finalEggsQuantity) {
+          setToast({ show: true, message: 'Not enough eggs available.', type: 'error' });
+          return;
+        }
+        totalPrice = calculateEggsPrice(item, finalEggsQuantity);
+        cartItem = {
+          ...item,
+          price: totalPrice, // Total price for all eggs
+          quantity: finalEggsQuantity, // Number of eggs
+          weight: finalEggsQuantity, // For compatibility
+          unitDescription: `${finalEggsQuantity} eggs`,
+        };
+        const newQty = currentQty - finalEggsQuantity;
+        stockUpdatePromise = updateDoc(productRef, { quantity: newQty < 0 ? 0 : newQty });
+
       // --- LOGIC FOR MASALAS (BY PIECE) ---
-      if (item.category === 'masalas') {
-        if (currentQty < itemPieceQuantity) {
+      } else if (item.category === 'masalas') {
+        const finalPieceQuantity = useManualInput ? manualPieces : itemPieceQuantity;
+        if (currentQty < finalPieceQuantity) {
           setToast({ show: true, message: 'Not enough stock available.', type: 'error' });
           return;
         }
-        totalPrice = item.price * itemPieceQuantity;
+        totalPrice = item.price * finalPieceQuantity;
         cartItem = {
           ...item,
           price: totalPrice, // Total price for all pieces
-          quantity: itemPieceQuantity, // Number of pieces
+          quantity: finalPieceQuantity, // Number of pieces
           unitDescription: `${item.unitWeight}g piece`,
         };
-        const newQty = currentQty - itemPieceQuantity;
+        const newQty = currentQty - finalPieceQuantity;
         stockUpdatePromise = updateDoc(productRef, { quantity: newQty < 0 ? 0 : newQty });
 
       // --- LOGIC FOR MEAT (BY WEIGHT) ---
       } else {
-        const boughtKg = (itemWeight || 0) / 1000;
+        const finalWeight = useManualInput ? manualWeight : itemWeight;
+        const boughtKg = (finalWeight || 0) / 1000;
         if (currentQty < boughtKg) {
             setToast({ show: true, message: 'Not enough stock available for the requested weight.', type: 'error' });
             return;
         }
-        totalPrice = calculatePriceByWeight(item, itemWeight);
+        totalPrice = calculatePriceByWeight(item, finalWeight);
         cartItem = {
           ...item,
           price: totalPrice, // Total price for the weight
-          weight: itemWeight, // Weight in grams
+          weight: finalWeight, // Weight in grams
           quantity: 1, // Always 1 for weight-based items in this system
-          unitDescription: `${itemWeight}g`,
+          unitDescription: `${finalWeight}g`,
         };
         let newQty = currentQty - boughtKg;
         stockUpdatePromise = updateDoc(productRef, { quantity: newQty < 0 ? 0 : newQty });
@@ -250,7 +290,19 @@ function AdminDashboard() {
                             {item.name}
                         </h3>
                         
-                        {item.category === 'masalas' ? (
+                        {item.category === 'eggs' ? (
+                            <div className="space-y-3 mb-4">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-base font-semibold text-slate-700">6 eggs: <span className="text-red-600 font-bold">₹{item.price6}</span></span>
+                                    <span className="text-base font-semibold text-slate-700">12 eggs: <span className="text-red-600 font-bold">₹{item.price12}</span></span>
+                                    <span className="text-base font-semibold text-slate-700">30 eggs: <span className="text-red-600 font-bold">₹{item.price30}</span></span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-600 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>🥚 Available:</span>
+                                    <span className={`text-sm font-bold ${(item.quantity || 0) > 10 ? 'text-green-600' : (item.quantity || 0) > 0 ? 'text-yellow-600' : 'text-red-600'}`} style={{ fontFamily: 'Inter, sans-serif' }}>{item.quantity || 0} eggs</span>
+                                </div>
+                            </div>
+                        ) : item.category === 'masalas' ? (
                             <div className="space-y-3 mb-4">
                                 <div className="flex items-center justify-between">
                                 <span className="text-2xl font-bold text-slate-700" style={{ fontFamily: 'Montserrat, sans-serif' }}>₹{item.price}</span>
@@ -266,13 +318,13 @@ function AdminDashboard() {
                                 <div className="flex items-center justify-between">
                                 <span className="text-2xl font-bold text-slate-700" style={{ fontFamily: 'Montserrat, sans-serif' }}>₹{item.price}</span>
                                 <span className="text-sm text-slate-500 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    {item.category === 'eggs' ? '/ dozen' : '/ kg'}
+                                    / kg
                                 </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>📦 Available:</span>
                                 <span className={`text-sm font-bold ${(item.quantity || 0) > 10 ? 'text-green-600' : (item.quantity || 0) > 0 ? 'text-yellow-600' : 'text-red-600'}`} style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    {item.quantity || 0} {item.category === 'eggs' ? 'dozens' : 'kg'}
+                                    {item.quantity || 0} kg
                                 </span>
                                 </div>
                             </div>
@@ -290,45 +342,135 @@ function AdminDashboard() {
 
       {showCustomerForm && selectedItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-200 shadow-2xl">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 shadow-2xl">
             <h3 className="text-xl font-bold mb-4 text-slate-800" style={{ fontFamily: 'Montserrat, sans-serif' }}>Create Order - {selectedItem.name}</h3>
             
-            {selectedItem.category === 'masalas' ? (
+            {/* Manual Input Toggle */}
+            <div className="mb-4">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useManualInput}
+                  onChange={(e) => setUseManualInput(e.target.checked)}
+                  className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                />
+                <span className="text-sm font-medium text-slate-700" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  Use Manual Input
+                </span>
+              </label>
+            </div>
+            
+            {selectedItem.category === 'eggs' ? (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Number of Pieces</label>
-                  <input
-                    type="number"
-                    value={itemPieceQuantity}
-                    onChange={(e) => setItemPieceQuantity(Number(e.target.value))}
-                    className="w-full p-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                    min="1"
-                    step="1"
-                  />
-                  <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Total Price: ₹{selectedItem.price * itemPieceQuantity}
-                  </p>
-                </div>
+                {!useManualInput ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Number of Eggs</label>
+                    <select
+                      value={eggsQuantity}
+                      onChange={(e) => setEggsQuantity(Number(e.target.value))}
+                      className="w-full p-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                    >
+                      <option value={6}>6 eggs - ₹{selectedItem.price6}</option>
+                      <option value={12}>12 eggs - ₹{selectedItem.price12}</option>
+                      <option value={30}>30 eggs - ₹{selectedItem.price30}</option>
+                    </select>
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Total Price: ₹{calculateEggsPrice(selectedItem, eggsQuantity)}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Manual Number of Eggs</label>
+                    <input
+                      type="number"
+                      value={manualEggs}
+                      onChange={(e) => setManualEggs(Number(e.target.value))}
+                      className="w-full p-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                      min="1"
+                      step="1"
+                      placeholder="Enter number of eggs"
+                    />
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Total Price: ₹{calculateEggsPrice(selectedItem, manualEggs)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : selectedItem.category === 'masalas' ? (
+              <div className="space-y-4">
+                {!useManualInput ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Number of Pieces</label>
+                    <input
+                      type="number"
+                      value={itemPieceQuantity}
+                      onChange={(e) => setItemPieceQuantity(Number(e.target.value))}
+                      className="w-full p-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                      min="1"
+                      step="1"
+                    />
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Total Price: ₹{selectedItem.price * itemPieceQuantity}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Manual Number of Pieces</label>
+                    <input
+                      type="number"
+                      value={manualPieces}
+                      onChange={(e) => setManualPieces(Number(e.target.value))}
+                      className="w-full p-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                      min="1"
+                      step="1"
+                      placeholder="Enter number of pieces"
+                    />
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Total Price: ₹{selectedItem.price * manualPieces}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Weight (g)</label>
-                  <div className="flex items-center">
-                    <input
-                      type="number"
-                      value={itemWeight}
-                      onChange={(e) => setItemWeight(parseInt(e.target.value) || 0)}
-                      className="flex-1 p-2 border-2 border-slate-200 rounded-l-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                      min="100"
-                      step="100"
-                    />
-                    <span className="bg-slate-100 px-3 py-2 border-2 border-l-0 border-slate-200 rounded-r-xl text-slate-600" style={{ fontFamily: 'Inter, sans-serif' }}>g</span>
+                {!useManualInput ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Weight (g)</label>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        value={itemWeight}
+                        onChange={(e) => setItemWeight(parseInt(e.target.value) || 0)}
+                        className="flex-1 p-2 border-2 border-slate-200 rounded-l-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                        min="100"
+                        step="100"
+                      />
+                      <span className="bg-slate-100 px-3 py-2 border-2 border-l-0 border-slate-200 rounded-r-xl text-slate-600" style={{ fontFamily: 'Inter, sans-serif' }}>g</span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Price: ₹{calculatePriceByWeight(selectedItem, itemWeight)}
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Price: ₹{calculatePriceByWeight(selectedItem, itemWeight)}
-                  </p>
-                </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Manual Weight (g)</label>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        value={manualWeight}
+                        onChange={(e) => setManualWeight(parseInt(e.target.value) || 0)}
+                        className="flex-1 p-2 border-2 border-slate-200 rounded-l-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                        min="1"
+                        step="1"
+                        placeholder="Enter weight in grams"
+                      />
+                      <span className="bg-slate-100 px-3 py-2 border-2 border-l-0 border-slate-200 rounded-r-xl text-slate-600" style={{ fontFamily: 'Inter, sans-serif' }}>g</span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Price: ₹{calculatePriceByWeight(selectedItem, manualWeight)}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             
