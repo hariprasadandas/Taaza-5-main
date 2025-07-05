@@ -89,7 +89,19 @@ function Cart(props) {
     localStorage.setItem('taazaCart', JSON.stringify(updated));
   };
 
-  const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Helper function to calculate item price based on category
+  const calculateItemPrice = (item) => {
+    if (item.category === 'eggs') {
+      const quantity = item.quantity;
+      if (quantity === 6) return item.price6 || (item.pricePerEgg * 6) || 0;
+      if (quantity === 12) return item.price12 || (item.pricePerEgg * 12) || 0;
+      if (quantity === 30) return item.price30 || (item.pricePerEgg * 30) || 0;
+      return (item.pricePerEgg || 0) * quantity;
+    }
+    return (item.price || 0) * item.quantity;
+  };
+
+  const total = cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -134,7 +146,7 @@ function Cart(props) {
     }
 
     try {
-      const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const total = cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
       
       const orderId = await generateOrderId();
       
@@ -205,7 +217,7 @@ function Cart(props) {
                     <table border='1' cellpadding='8' cellspacing='0' style='margin-top:16px;width:100%;'>
                       <thead><tr><th>Item</th><th>Unit</th><th>Qty</th><th>Price</th></tr></thead>
                       <tbody>
-                        ${cartItems.map(item => `<tr><td>${item.name}</td><td>${item.category === 'eggs' ? '1 piece' : `${item.weight}g`}</td><td>${item.quantity}</td><td>₹${item.price * item.quantity}</td></tr>`).join('')}
+                        ${cartItems.map(item => `<tr><td>${item.name}</td><td>${item.category === 'eggs' ? '1 piece' : `${item.weight}g`}</td><td>${item.quantity}</td><td>₹${calculateItemPrice(item)}</td></tr>`).join('')}
                       </tbody>
                     </table>
                     <p style='margin-top:16px;'><strong>Total:</strong> ₹${total}</p>
@@ -313,7 +325,7 @@ function Cart(props) {
                   {item.category === 'eggs' ? '1 piece' : `${item.weight}g`}
                 </p>
                 <p className="responsive-text-base text-gray-700 mb-3">
-                  ₹{item.price} x {item.quantity} = <span className="font-semibold text-green-600">₹{item.price * item.quantity}</span>
+                  ₹{item.price} x {item.quantity} = <span className="font-semibold text-green-600">₹{calculateItemPrice(item)}</span>
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <button 

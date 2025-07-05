@@ -135,7 +135,7 @@ function SimpleLogin() {
   };
 
   return (
-    <div className="login-root h-screen bg-black flex items-center justify-center p-4 overflow-hidden">
+    <div className="login-root h-screen bg-black flex items-center justify-center p-4 overflow-hidden" style={{border: 'none', boxShadow: 'none', outline: 'none'}}>
       <Toast message={toast.message} show={toast.show} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       <div className="flex flex-col justify-center gap-4 lg:gap-0 lg:flex-row w-full max-w-4xl bg-transparent rounded-2xl overflow-hidden shadow-2xl h-full lg:h-auto lg:max-h-[90vh]">
         

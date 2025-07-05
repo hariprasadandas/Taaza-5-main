@@ -1,294 +1,86 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { collection, getDocs, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
-import bgImg from '../../../assets/bg.jpg'; // This import is essential for the header
+import { collection, onSnapshot } from 'firebase/firestore';
 import wholeChicken from "../../../assets/wholeChicken.png";
 import goatMeat from "../../../assets/goatMeat.png";
+import bgImg from '../../../assets/bg.jpg';
+import taazaBanner from '../../../assets/taaza-banner.jpg';
+import banner2 from '../../../assets/banner2.jpg';
+import banner3 from '../../../assets/banner3.jpg';
 
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css"; 
 import "slick-carousel/slick/slick-theme.css";
 
-// --- DEFINITIVE, ILLUSTRATIVE & RECOGNIZABLE ICONS ---
-const AllIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 21h8v-8h-8v8zm6-6h-4v4h4v-4z" />
+// --- SVG Icon for the "Add" button ---
+function PlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
   </svg>
 );
+}
 
-// Advanced Chicken Icon with detailed features and gradients
-const ChickenIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-    {/* Chicken body with gradient */}
-    <ellipse cx="12" cy="14" rx="8" ry="6" fill="url(#chickenBody)" stroke="#E65100" strokeWidth="0.8"/>
-    
-    {/* Chicken head with gradient */}
-    <circle cx="12" cy="8" r="3" fill="url(#chickenHead)" stroke="#E65100" strokeWidth="0.8"/>
-    
-    {/* Beak with 3D effect */}
-    <path d="M12 5L14.5 7.5L12 10L9.5 7.5L12 5Z" fill="url(#beakGradient)"/>
-    <path d="M12 5L13.5 6.5L12 8L10.5 6.5L12 5Z" fill="#FF6F00" opacity="0.7"/>
-    
-    {/* Eye with depth */}
-    <circle cx="13" cy="7" r="1" fill="#1A1A1A"/>
-    <circle cx="13" cy="7" r="0.4" fill="#FFFFFF"/>
-    <circle cx="13.2" cy="6.8" r="0.2" fill="#1A1A1A"/>
-    
-    {/* Comb with texture */}
-    <path d="M9 6C9 6 10.5 3.5 12 3.5C13.5 3.5 15 6 15 6L14 7.5L12 6.5L10 7.5L9 6Z" fill="url(#combGradient)"/>
-    <path d="M10 5.5C10 5.5 11 4 12 4C13 4 14 5.5 14 5.5" stroke="#B71C1C" strokeWidth="0.3" fill="none"/>
-    
-    {/* Wings with feather detail */}
-    <ellipse cx="8" cy="13" rx="2.5" ry="3.5" fill="url(#wingGradient)" stroke="#E65100" strokeWidth="0.5"/>
-    <ellipse cx="16" cy="13" rx="2.5" ry="3.5" fill="url(#wingGradient)" stroke="#E65100" strokeWidth="0.5"/>
-    <path d="M6 12C6 12 7.5 10.5 9 12" stroke="#E65100" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-    <path d="M18 12C18 12 16.5 10.5 15 12" stroke="#E65100" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-    
-    {/* Legs with texture */}
-    <rect x="10.5" y="19" width="1" height="2.5" fill="#5D4037" stroke="#3E2723" strokeWidth="0.3"/>
-    <rect x="12.5" y="19" width="1" height="2.5" fill="#5D4037" stroke="#3E2723" strokeWidth="0.3"/>
-    
-    {/* Feet with detail */}
-    <path d="M10.5 21.5L9 23L12 23L10.5 21.5Z" fill="#3E2723"/>
-    <path d="M12.5 21.5L11 23L14 23L12.5 21.5Z" fill="#3E2723"/>
-    <circle cx="9.5" cy="22.5" r="0.3" fill="#1A1A1A"/>
-    <circle cx="13.5" cy="22.5" r="0.3" fill="#1A1A1A"/>
-    
-    {/* Gradients */}
-    <defs>
-      <linearGradient id="chickenBody" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFD54F"/>
-        <stop offset="50%" stopColor="#FFB300"/>
-        <stop offset="100%" stopColor="#FF8F00"/>
-      </linearGradient>
-      <linearGradient id="chickenHead" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFD54F"/>
-        <stop offset="100%" stopColor="#FFB300"/>
-      </linearGradient>
-      <linearGradient id="beakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FF8F00"/>
-        <stop offset="100%" stopColor="#E65100"/>
-      </linearGradient>
-      <linearGradient id="combGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#D32F2F"/>
-        <stop offset="100%" stopColor="#B71C1C"/>
-      </linearGradient>
-      <linearGradient id="wingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFB74D"/>
-        <stop offset="100%" stopColor="#FF8F00"/>
-      </linearGradient>
-    </defs>
+// --- SVG Icon for the cart button in the nav bar ---
+function BasketIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
   </svg>
 );
+}
 
-// Advanced Mutton/Lamb Icon with wool texture and realistic features
-const MuttonIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-    {/* Lamb body with wool texture */}
-    <ellipse cx="12" cy="15" rx="7" ry="5" fill="url(#woolBody)" stroke="#E0E0E0" strokeWidth="0.8"/>
-    
-    {/* Lamb head with wool texture */}
-    <circle cx="12" cy="9" r="3.5" fill="url(#woolHead)" stroke="#E0E0E0" strokeWidth="0.8"/>
-    
-    {/* Ears with detail */}
-    <ellipse cx="10" cy="7" rx="1.2" ry="1.8" fill="url(#earGradient)" stroke="#D0D0D0" strokeWidth="0.5"/>
-    <ellipse cx="14" cy="7" rx="1.2" ry="1.8" fill="url(#earGradient)" stroke="#D0D0D0" strokeWidth="0.5"/>
-    <ellipse cx="10" cy="7" rx="0.6" ry="0.9" fill="#F5F5F5"/>
-    <ellipse cx="14" cy="7" rx="0.6" ry="0.9" fill="#F5F5F5"/>
-    
-    {/* Eyes with depth */}
-    <circle cx="11" cy="8.5" r="0.8" fill="#2E2E2E"/>
-    <circle cx="13" cy="8.5" r="0.8" fill="#2E2E2E"/>
-    <circle cx="11" cy="8.5" r="0.3" fill="#FFFFFF"/>
-    <circle cx="13" cy="8.5" r="0.3" fill="#FFFFFF"/>
-    <circle cx="11.2" cy="8.3" r="0.15" fill="#2E2E2E"/>
-    <circle cx="13.2" cy="8.3" r="0.15" fill="#2E2E2E"/>
-    
-    {/* Nose with texture */}
-    <ellipse cx="12" cy="10" rx="1" ry="0.6" fill="url(#noseGradient)"/>
-    <ellipse cx="12" cy="10" rx="0.5" ry="0.3" fill="#9E9E9E"/>
-    
-    {/* Mouth */}
-    <path d="M11.5 10.5C11.5 10.5 12 11.2 12.5 10.5" stroke="#9E9E9E" strokeWidth="0.4" fill="none" strokeLinecap="round"/>
-    
-    {/* Wool texture circles */}
-    <circle cx="8" cy="14" r="1" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.3"/>
-    <circle cx="16" cy="14" r="1" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.3"/>
-    <circle cx="12" cy="16" r="1" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.3"/>
-    <circle cx="10" cy="15" r="0.7" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.2"/>
-    <circle cx="14" cy="15" r="0.7" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.2"/>
-    
-    {/* Legs with texture */}
-    <rect x="9.5" y="19" width="1.2" height="3" fill="url(#legGradient)" stroke="#D0D0D0" strokeWidth="0.5"/>
-    <rect x="13.3" y="19" width="1.2" height="3" fill="url(#legGradient)" stroke="#D0D0D0" strokeWidth="0.5"/>
-    
-    {/* Hooves with detail */}
-    <ellipse cx="10" cy="22" rx="1" ry="0.4" fill="url(#hoofGradient)"/>
-    <ellipse cx="14" cy="22" rx="1" ry="0.4" fill="url(#hoofGradient)"/>
-    <ellipse cx="10" cy="22" rx="0.5" ry="0.2" fill="#757575"/>
-    <ellipse cx="14" cy="22" rx="0.5" ry="0.2" fill="#757575"/>
-    
-    {/* Tail with wool */}
-    <ellipse cx="19" cy="15" rx="1.8" ry="1.2" fill="url(#woolTexture)" stroke="#E0E0E0" strokeWidth="0.3"/>
-    
-    {/* Gradients */}
-    <defs>
-      <radialGradient id="woolBody" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#FFFFFF"/>
-        <stop offset="50%" stopColor="#F5F5F5"/>
-        <stop offset="100%" stopColor="#E8E8E8"/>
-      </radialGradient>
-      <radialGradient id="woolHead" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#FFFFFF"/>
-        <stop offset="100%" stopColor="#F5F5F5"/>
-      </radialGradient>
-      <linearGradient id="earGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#E8E8E8"/>
-        <stop offset="100%" stopColor="#D0D0D0"/>
-      </linearGradient>
-      <linearGradient id="noseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#BDBDBD"/>
-        <stop offset="100%" stopColor="#9E9E9E"/>
-      </linearGradient>
-      <radialGradient id="woolTexture" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#FAFAFA"/>
-        <stop offset="100%" stopColor="#E0E0E0"/>
-      </radialGradient>
-      <linearGradient id="legGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#E0E0E0"/>
-        <stop offset="100%" stopColor="#D0D0D0"/>
-      </linearGradient>
-      <linearGradient id="hoofGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#9E9E9E"/>
-        <stop offset="100%" stopColor="#757575"/>
-      </linearGradient>
-    </defs>
-  </svg>
-);
+// --- The Bottom Navigation Bar Component ---
+function BottomNavBar({ categories, onCategoryClick, onCartClick }) {
+  const leftCategories = categories.slice(0, 2);
+  const rightCategories = categories.slice(2, 4);
 
-// Advanced Goat Icon with realistic features and textures
-const GoatIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-    {/* Goat body with fur texture */}
-    <ellipse cx="12" cy="15" rx="7" ry="5" fill="url(#goatBody)" stroke="#6D4C41" strokeWidth="0.8"/>
-    
-    {/* Goat head with fur texture */}
-    <ellipse cx="12" cy="9" rx="3" ry="3.5" fill="url(#goatHead)" stroke="#6D4C41" strokeWidth="0.8"/>
-    
-    {/* Horns with realistic curves */}
-    <path d="M10 6C10 6 9 3.5 10 2.5C11 1.5 12 2.5 12 3.5" stroke="url(#hornGradient)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-    <path d="M14 6C14 6 15 3.5 14 2.5C13 1.5 12 2.5 12 3.5" stroke="url(#hornGradient)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-    <path d="M10 6C10 6 9.5 4.5 10 3.5" stroke="#5D4037" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-    <path d="M14 6C14 6 14.5 4.5 14 3.5" stroke="#5D4037" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-    
-    {/* Ears with detail */}
-    <ellipse cx="10" cy="7" rx="1" ry="1.4" fill="url(#earGradient)" stroke="#5D4037" strokeWidth="0.5"/>
-    <ellipse cx="14" cy="7" rx="1" ry="1.4" fill="url(#earGradient)" stroke="#5D4037" strokeWidth="0.5"/>
-    <ellipse cx="10" cy="7" rx="0.5" ry="0.7" fill="#8D6E63"/>
-    <ellipse cx="14" cy="7" rx="0.5" ry="0.7" fill="#8D6E63"/>
-    
-    {/* Eyes with depth */}
-    <circle cx="11" cy="8.5" r="0.8" fill="#1A1A1A"/>
-    <circle cx="13" cy="8.5" r="0.8" fill="#1A1A1A"/>
-    <circle cx="11" cy="8.5" r="0.3" fill="#FFFFFF"/>
-    <circle cx="13" cy="8.5" r="0.3" fill="#FFFFFF"/>
-    <circle cx="11.2" cy="8.3" r="0.15" fill="#1A1A1A"/>
-    <circle cx="13.2" cy="8.3" r="0.15" fill="#1A1A1A"/>
-    
-    {/* Nose with texture */}
-    <ellipse cx="12" cy="10.5" rx="0.8" ry="0.5" fill="url(#noseGradient)"/>
-    <ellipse cx="12" cy="10.5" rx="0.4" ry="0.25" fill="#5D4037"/>
-    
-    {/* Mouth */}
-    <path d="M11.5 11C11.5 11 12 11.8 12.5 11" stroke="#5D4037" strokeWidth="0.4" fill="none" strokeLinecap="round"/>
-    
-    {/* Beard with texture */}
-    <path d="M12 11.5C12 11.5 11 13.5 9.5 13" stroke="url(#beardGradient)" strokeWidth="1" fill="none" strokeLinecap="round"/>
-    <path d="M12 11.5C12 11.5 13 13.5 14.5 13" stroke="url(#beardGradient)" strokeWidth="1" fill="none" strokeLinecap="round"/>
-    <path d="M12 12C12 12 11.5 13 10.5 12.5" stroke="#5D4037" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
-    <path d="M12 12C12 12 12.5 13 13.5 12.5" stroke="#5D4037" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
-    
-    {/* Fur texture on body */}
-    <path d="M8 14C8 14 9 12.5 10.5 14" stroke="#6D4C41" strokeWidth="0.5" fill="none" strokeLinecap="round"/>
-    <path d="M16 14C16 14 15 12.5 13.5 14" stroke="#6D4C41" strokeWidth="0.5" fill="none" strokeLinecap="round"/>
-    <path d="M10 15C10 15 11 13.5 12.5 15" stroke="#6D4C41" strokeWidth="0.4" fill="none" strokeLinecap="round"/>
-    <path d="M14 15C14 15 13 13.5 11.5 15" stroke="#6D4C41" strokeWidth="0.4" fill="none" strokeLinecap="round"/>
-    
-    {/* Legs with texture */}
-    <rect x="9.5" y="19" width="1.2" height="3" fill="url(#legGradient)" stroke="#5D4037" strokeWidth="0.5"/>
-    <rect x="13.3" y="19" width="1.2" height="3" fill="url(#legGradient)" stroke="#5D4037" strokeWidth="0.5"/>
-    
-    {/* Hooves with detail */}
-    <ellipse cx="10" cy="22" rx="1" ry="0.4" fill="url(#hoofGradient)"/>
-    <ellipse cx="14" cy="22" rx="1" ry="0.4" fill="url(#hoofGradient)"/>
-    <ellipse cx="10" cy="22" rx="0.5" ry="0.2" fill="#4E342E"/>
-    <ellipse cx="14" cy="22" rx="0.5" ry="0.2" fill="#4E342E"/>
-    
-    {/* Tail with fur */}
-    <ellipse cx="19" cy="15" rx="1.8" ry="1.2" fill="url(#tailGradient)" stroke="#6D4C41" strokeWidth="0.3"/>
-    
-    {/* Gradients */}
-    <defs>
-      <radialGradient id="goatBody" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#A1887F"/>
-        <stop offset="50%" stopColor="#8D6E63"/>
-        <stop offset="100%" stopColor="#6D4C41"/>
-      </radialGradient>
-      <radialGradient id="goatHead" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#A1887F"/>
-        <stop offset="100%" stopColor="#8D6E63"/>
-      </radialGradient>
-      <linearGradient id="hornGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6D4C41"/>
-        <stop offset="100%" stopColor="#4E342E"/>
-      </linearGradient>
-      <linearGradient id="earGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8D6E63"/>
-        <stop offset="100%" stopColor="#6D4C41"/>
-      </linearGradient>
-      <linearGradient id="noseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6D4C41"/>
-        <stop offset="100%" stopColor="#5D4037"/>
-      </linearGradient>
-      <linearGradient id="beardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6D4C41"/>
-        <stop offset="100%" stopColor="#4E342E"/>
-      </linearGradient>
-      <linearGradient id="legGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8D6E63"/>
-        <stop offset="100%" stopColor="#6D4C41"/>
-      </linearGradient>
-      <linearGradient id="hoofGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#5D4037"/>
-        <stop offset="100%" stopColor="#4E342E"/>
-      </linearGradient>
-      <radialGradient id="tailGradient" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#A1887F"/>
-        <stop offset="100%" stopColor="#8D6E63"/>
-      </radialGradient>
-    </defs>
-  </svg>
-);
-
-const EggIcon = (props) => (
-  <span role="img" aria-label="Eggs" {...props}>🥚</span>
-);
-const MasalaIcon = (props) => (
-  <span role="img" aria-label="Masalas" {...props}>🧂</span>
-);
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-gray-50 border-t border-gray-200 shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.1)] z-40 lg:hidden">
+      <div className="flex justify-between items-center h-full max-w-lg mx-auto px-2">
+        {/* Left container */}
+        <div className="flex justify-around w-2/5">
+          {leftCategories.map((cat) => (
+            <button key={cat.key} onClick={() => onCategoryClick(cat.key)} className="flex flex-col items-center justify-center space-y-1 text-center group">
+              <div className="w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center group-hover:border-red-400 transition-colors">
+                <img src={cat.imageUrl} alt={cat.label} className="w-9 h-9 object-contain p-1" />
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        {/* Center Cart Button */}
+        <div className="relative -top-5">
+          <button onClick={onCartClick} className="w-16 h-16 rounded-full bg-white shadow-lg border-2 border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
+            <BasketIcon />
+          </button>
+        </div>
+        
+        {/* Right container */}
+        <div className="flex justify-around w-2/5">
+          {rightCategories.map((cat) => (
+            <button key={cat.key} onClick={() => onCategoryClick(cat.key)} className="flex flex-col items-center justify-center space-y-1 text-center group">
+              <div className="w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center group-hover:border-red-400 transition-colors">
+                <img src={cat.imageUrl} alt={cat.label} className="w-9 h-9 object-contain p-1" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
 
 const useWindowWidth = () => {
   const [windowWidth, setWindowWidth] = useState(0);
-
   useEffect(() => {
     function handleResize() { setWindowWidth(window.innerWidth); }
     window.addEventListener("resize", handleResize);
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []); 
-
   return windowWidth;
 };
 
@@ -305,20 +97,68 @@ function SectionHeading({ children, id }) {
 }
 
 function ProductCard({ item, onAddToCart }) {
-  const [customGms, setCustomGms] = useState('');
+  const [customGms, setCustomGms] = useState(500);
+  const [customEggs, setCustomEggs] = useState(6);
+  const [customPieces, setCustomPieces] = useState(1);
+  const [useManualEggs, setUseManualEggs] = useState(false);
+  const [useManualWeight, setUseManualWeight] = useState(false);
+  const [useManualPieces, setUseManualPieces] = useState(false);
 
-  const handleAddClick = () => {
-    const addedWeight = parseInt(customGms, 10) || 500;
-    const finalPrice = Math.round((item.price * (addedWeight / 1000)));
-    onAddToCart(item, addedWeight, finalPrice);
-    setCustomGms('');
+  // Helper function to calculate eggs price
+  const calculateEggsPrice = (item, quantity) => {
+    if (quantity === 6) return item.price6 || (item.pricePerEgg * 6) || 0;
+    if (quantity === 12) return item.price12 || (item.pricePerEgg * 12) || 0;
+    if (quantity === 30) return item.price30 || (item.pricePerEgg * 30) || 0;
+    return (item.pricePerEgg || 0) * quantity;
   };
 
-  const displayPrice = useMemo(() => Math.round((item.price || 0) / 2), [item.price]);
+  // Helper function to calculate weight price
+  const calculateWeightPrice = (item, weight) => {
+    return Math.round((item.price * (weight / 1000)));
+  };
+
+  // Helper function to calculate pieces price
+  const calculatePiecesPrice = (item, pieces) => {
+    return item.price * pieces;
+  };
+
+  const handleAddClick = () => {
+    if (item.category === 'eggs') {
+      const finalEggsQuantity = useManualEggs ? customEggs : (customEggs || 6);
+      const finalPrice = calculateEggsPrice(item, finalEggsQuantity);
+      onAddToCart(item, finalEggsQuantity, finalPrice);
+      setCustomEggs(6);
+      setUseManualEggs(false);
+    } else if (item.category === 'masalas') {
+      const finalPieces = useManualPieces ? customPieces : (customPieces || 1);
+      const finalPrice = calculatePiecesPrice(item, finalPieces);
+      onAddToCart(item, finalPieces, finalPrice);
+      setCustomPieces(1);
+      setUseManualPieces(false);
+    } else if (item.category === 'chicken' || item.category === 'mutton' || item.category === 'goat') {
+      const finalWeight = customGms || 500;
+      const finalPrice = Math.round((item.price * (finalWeight / 1000)));
+      onAddToCart(item, finalWeight, finalPrice);
+      setCustomGms(500);
+    } else {
+      const finalWeight = customGms || 500;
+      const finalPrice = calculateWeightPrice(item, finalWeight);
+      onAddToCart(item, finalWeight, finalPrice);
+      setCustomGms(500);
+    }
+  };
+
+  const displayPrice = useMemo(() => {
+    if (item.category === 'eggs') {
+      // For eggs, show price for 6 eggs as default
+      return Math.round((item.price6 || (item.pricePerEgg * 6) || 0) / 2);
+    }
+    return Math.round((item.price || 0) / 2);
+  }, [item.price, item.price6, item.pricePerEgg, item.category]);
 
   return (
-    <article className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full p-3 md:p-4 lg:p-5 xl:p-6 hover:shadow-lg transition-shadow duration-300">
-      <div className="w-full h-32 sm:h-36 lg:h-60 xl:h-72 bg-gray-100 rounded-md mb-3 overflow-hidden">
+    <article className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full p-3 md:p-4 hover:shadow-lg transition-shadow duration-300">
+      <div className="w-full h-32 sm:h-36 bg-gray-100 rounded-md mb-3 overflow-hidden">
       <img
             src={item.imageUrl || 'https://via.placeholder.com/300x200'} 
         alt={item.name}
@@ -326,13 +166,193 @@ function ProductCard({ item, onAddToCart }) {
         />
             </div>
       <div className="flex flex-col flex-grow">
-        <h3 className="font-bold text-gray-800 text-sm md:text-base lg:text-xl xl:text-2xl leading-tight">{item.name}</h3>
-        <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-1">{item.description || '500 gms | 10-12 Pieces'}</p>
-        <p className="font-extrabold text-base md:text-lg lg:text-2xl xl:text-3xl text-gray-900 my-2 lg:my-3 xl:my-4">₹{displayPrice}/-</p>
-        <div className="flex items-center gap-2 mt-auto pt-2">
-          <input type="text" pattern="[0-9]*" inputMode="numeric" value={customGms} onChange={(e) => setCustomGms(e.target.value.replace(/[^0-9]/g, ''))} placeholder="Enter gms" className="w-full text-xs md:text-sm lg:text-base xl:text-lg p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500"/>
-          <button onClick={handleAddClick} className="bg-red-50 text-red-600 border border-red-200 rounded-lg px-4 py-3 flex-shrink-0 font-bold text-xs md:text-sm lg:text-base xl:text-lg hover:bg-red-100 transition-colors">Add</button>
+        <h3 className="font-bold text-gray-800 text-sm md:text-base leading-tight mb-2">{item.name}</h3>
+        <p className="font-extrabold text-base md:text-lg text-gray-900 mb-3">₹{displayPrice}/-</p>
+        
+        {item.category === 'eggs' ? (
+          <div className="space-y-3">
+            {/* Manual Input Toggle for Eggs */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={useManualEggs}
+                  onChange={(e) => setUseManualEggs(e.target.checked)}
+                  className="rounded border-gray-300 text-red-500 focus:ring-red-500 w-4 h-4 sm:w-5 sm:h-5"
+                />
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">Custom quantity</span>
+              </div>
+              {/* Price Display for Eggs */}
+              <p className="text-xs sm:text-sm text-green-600 font-semibold">
+                ₹{calculateEggsPrice(item, useManualEggs ? customEggs : customEggs)}
+              </p>
+            </div>
+            
+            {!useManualEggs ? (
+              <div className="space-y-2">
+                <select
+                  value={customEggs}
+                  onChange={(e) => setCustomEggs(Number(e.target.value))}
+                  className="w-full text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 bg-white"
+                >
+                  <option value={6}>6 eggs - ₹{item.price6}</option>
+                  <option value={12}>12 eggs - ₹{item.price12}</option>
+                  <option value={30}>30 eggs - ₹{item.price30}</option>
+                </select>
+                <button 
+                  onClick={handleAddClick} 
+                  className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                >
+                  <span>Add to Cart</span>
+                  <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                      <PlusIcon />
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={customEggs} 
+                    onChange={(e) => setCustomEggs(Number(e.target.value))} 
+                    placeholder="Enter eggs" 
+                    min="1"
+                    className="flex-1 text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500"
+                  />
+                  <button 
+                    onClick={handleAddClick} 
+                    className="flex-shrink-0 flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                  >
+                    <span className="hidden sm:inline">Add</span>
+                    <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                        <PlusIcon />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : item.category === 'masalas' ? (
+          <div className="space-y-3">
+            {/* Manual Input Toggle for Masalas */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={useManualPieces}
+                  onChange={(e) => setUseManualPieces(e.target.checked)}
+                  className="rounded border-gray-300 text-red-500 focus:ring-red-500 w-4 h-4 sm:w-5 sm:h-5"
+                />
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">Custom pieces</span>
+              </div>
+              {/* Price Display for Masalas */}
+              <p className="text-xs sm:text-sm text-green-600 font-semibold">
+                ₹{calculatePiecesPrice(item, useManualPieces ? customPieces : customPieces)}
+              </p>
+            </div>
+            
+            {!useManualPieces ? (
+              <div className="space-y-2">
+                <select
+                  value={customPieces}
+                  onChange={(e) => setCustomPieces(Number(e.target.value))}
+                  className="w-full text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 bg-white"
+                >
+                  <option value={1}>1 piece - ₹{item.price}</option>
+                  <option value={2}>2 pieces - ₹{item.price * 2}</option>
+                  <option value={3}>3 pieces - ₹{item.price * 3}</option>
+                  <option value={5}>5 pieces - ₹{item.price * 5}</option>
+                </select>
+                <button 
+                  onClick={handleAddClick} 
+                  className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                >
+                  <span>Add to Cart</span>
+                  <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                      <PlusIcon />
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={customPieces} 
+                    onChange={(e) => setCustomPieces(Number(e.target.value))} 
+                    placeholder="Enter pieces" 
+                    min="1"
+                    className="flex-1 text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500"
+                  />
+                  <button 
+                    onClick={handleAddClick} 
+                    className="flex-shrink-0 flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                  >
+                    <span className="hidden sm:inline">Add</span>
+                    <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                        <PlusIcon />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : item.category === 'chicken' || item.category === 'mutton' || item.category === 'goat' ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={customGms}
+                onChange={(e) => setCustomGms(Number(e.target.value))}
+                placeholder="Enter grams"
+                min="100"
+                step="50"
+                className="flex-1 text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500"
+              />
+              <button
+                onClick={handleAddClick}
+                className="flex-shrink-0 flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+              >
+                <span className="hidden sm:inline">Add</span>
+                <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                  <PlusIcon />
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Total: ₹{Math.round((item.price * (customGms / 1000)))}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs sm:text-sm text-green-600 font-semibold">
+                ₹{calculateWeightPrice(item, customGms)}
+              </span>
+            </div>
+            
+            <select
+              value={customGms}
+              onChange={(e) => setCustomGms(Number(e.target.value))}
+              className="w-full text-xs sm:text-sm p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 bg-white"
+            >
+              <option value={250}>250g - ₹{calculateWeightPrice(item, 250)}</option>
+              <option value={500}>500g - ₹{calculateWeightPrice(item, 500)}</option>
+              <option value={1000}>1kg - ₹{calculateWeightPrice(item, 1000)}</option>
+              <option value={1500}>1.5kg - ₹{calculateWeightPrice(item, 1500)}</option>
+            </select>
+            <button 
+              onClick={handleAddClick} 
+              className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white border border-red-500 rounded-lg px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+            >
+              <span>Add to Cart</span>
+              <div className="bg-white text-red-500 rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center">
+                  <PlusIcon />
+              </div>
+            </button>
         </div>
+        )}
       </div>
     </article>
   );
@@ -357,27 +377,33 @@ function Home() {
   const [cart, setCart] = useState(() => JSON.parse(localStorage.getItem('taazaCart')) || []);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const successTimeoutRef = useRef(null);
 
   const windowWidth = useWindowWidth();
   const DESKTOP_BREAKPOINT = 1024;
 
+  // --- UPDATED: Using new icon URLs that better match the Figma design ---
   const mindCategories = [
     { key: 'chicken', label: 'Chicken', imageUrl: 'https://assets.tendercuts.in/product/R/M/ae6849a6-0699-4617-a963-382e93cf8940.webp' },
     { key: 'mutton', label: 'Mutton', imageUrl: 'https://assets.tendercuts.in/product/R/M/2fa6b2bd-884e-4ecb-ac32-09bd7134a854.webp' },
     { key: 'eggs', label: 'Eggs', imageUrl: 'https://assets.tendercuts.in/product/c/h/chk_egg.jpg' },
-    { key: 'masala', label: 'Masala', imageUrl: 'https://images.pexels.com/photos/2802527/pexels-photo-2802527.jpeg' },
+    { key: 'masalas', label: 'Masala', imageUrl: 'https://images.pexels.com/photos/2802527/pexels-photo-2802527.jpeg' },
   ];
 
   const heroCarouselData = [
-    { id: 1, imageUrl: goatMeat, alt: "Fresh cuts of premium meat" },
-    { id: 2, imageUrl: wholeChicken, alt: "Weekly special offers on chicken" },
-    { id: 3, imageUrl: bgImg, alt: "Spices and marinades for the perfect dish" },
+    { id: 1, imageUrl: taazaBanner, alt: "Taaza Fresh Delivery", categoryKey: "chicken" },
+    { id: 2, imageUrl: banner2, alt: "Fresh Chicken, Eggs, and Meat", categoryKey: "eggs" },
+    { id: 3, imageUrl: banner3, alt: "Chicken and Spices", categoryKey: "masala" },
   ];
 
   const heroCarouselSettings = {
     dots: true, infinite: true, speed: 500, slidesToShow: 1, slidesToScroll: 1,
     autoplay: true, autoplaySpeed: 3000, fade: true, cssEase: 'linear', arrows: false,
   };
+
+  useEffect(() => {
+    return () => clearTimeout(successTimeoutRef.current);
+  }, []);
 
   useEffect(() => { if (!user || user.type !== 'customer') { navigate('/login'); } }, [user, navigate]);
   
@@ -390,15 +416,26 @@ function Home() {
   }, []);
   
   const handleAddToCart = (item, weight, price) => {
+    clearTimeout(successTimeoutRef.current);
+
+    // For eggs, use quantity as weight for compatibility
+    const isEggs = item.category === 'eggs';
+    const displayWeight = isEggs ? weight : weight;
+    const displayUnit = isEggs ? 'eggs' : 'g';
+
     const existingItem = cart.find(ci => ci.id === item.id && ci.weight === weight);
     const updatedCart = existingItem
       ? cart.map(ci => ci.id === item.id && ci.weight === weight ? { ...ci, quantity: ci.quantity + 1 } : ci)
       : [...cart, { ...item, weight, price, quantity: 1 }];
       setCart(updatedCart);
       localStorage.setItem('taazaCart', JSON.stringify(updatedCart));
-    setSuccessMessage(`${item.name} (${weight}g) added!`);
+
+    setSuccessMessage(`${item.name} (${displayWeight}${displayUnit}) added!`);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+    
+    successTimeoutRef.current = setTimeout(() => {
+      setShowSuccess(false);
+    }, 3000);
   };
 
   const groupedProducts = useMemo(() => products.reduce((acc, product) => {
@@ -422,26 +459,113 @@ function Home() {
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
 
   return (
-    <div className="bg-white">
-      <div className={`fixed bottom-5 right-5 bg-green-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform duration-300 ease-in-out z-50 ${showSuccess ? 'translate-y-0' : 'translate-y-24'}`}>
+    <div className="relative pb-24 lg:pb-0">
+      <div className={`fixed bottom-24 lg:bottom-5 right-5 bg-green-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 ease-in-out z-50 ${showSuccess ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
         ✅ {successMessage}
       </div>
 
-      <div className="w-full bg-slate-100 pt-8 md:pt-10 pb-4 md:pb-6">
-        <div className="w-11/12 lg:w-4/5 mx-auto">
+      {/* Professional Hero Banner Section */}
+      <div className="w-full bg-gradient-to-br from-slate-50 via-white to-slate-50 pt-16 lg:pt-20 pb-8 sm:pb-12 lg:pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Professional Header */}
+          <div className="text-center mb-8 sm:mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg mb-4 sm:mb-6">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-3 sm:mb-4 tracking-tight leading-tight">
+              Premium Meat Market
+            </h1>
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl sm:max-w-3xl mx-auto leading-relaxed px-4">
+              Experience the finest quality meat, carefully sourced and delivered fresh to your doorstep
+            </p>
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
+              <div className="flex items-center space-x-2 text-green-600">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm sm:text-base font-semibold">100% Fresh</span>
+              </div>
+              <div className="flex items-center space-x-2 text-green-600">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm sm:text-base font-semibold">Premium Quality</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Professional Carousel */}
+          <div className="relative">
           <Slider {...heroCarouselSettings}>
             {heroCarouselData.map((slide) => (
-              <div key={slide.id}>
-                <div className="relative h-40 md:h-64 lg:h-96 xl:h-[500px] w-full rounded-lg overflow-hidden bg-gray-200">
+              <div
+                key={slide.id}
+                className="cursor-pointer"
+                onClick={() => {
+                  if (slide.categoryKey) {
+                    scrollToCategory(slide.categoryKey);
+                  }
+                }}
+              >
+                <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[500px] w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/30 to-transparent z-10"></div>
                   <img
                     src={slide.imageUrl}
                     alt={slide.alt}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-cover"
                   />
+                  <div className="absolute inset-0 flex items-center justify-center sm:justify-start z-20 p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
+                    <div className="w-full sm:max-w-lg">
+                      <div className="bg-white/30 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl sm:shadow-2xl border border-white/20">
+                        <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2 sm:mb-4 leading-tight">
+                          {slide.alt}
+                        </h2>
+                        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+                          Discover our carefully curated selection of premium cuts
+                        </p>
+                        <button
+                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (slide.categoryKey) {
+                              scrollToCategory(slide.categoryKey);
+                            }
+                          }}
+                        >
+                          Shop {slide.categoryKey ? slide.categoryKey.charAt(0).toUpperCase() + slide.categoryKey.slice(1) : "Now"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </Slider>
+          </div>
+          
+          {/* Professional Stats Section */}
+          <div className="mt-12 sm:mt-16 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-2xl mx-auto">
+            <div className="text-center p-4 sm:p-6 bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">100%</div>
+              <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-600">Fresh Quality</div>
+            </div>
+            <div className="text-center p-4 sm:p-6 bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">50+</div>
+              <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-600">Premium Products</div>
+            </div>
+          </div>
         </div>
           </div>
 
@@ -465,16 +589,40 @@ function Home() {
       <div className="w-full bg-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading>Explore by Category</SectionHeading>
-          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-x-4 lg:gap-x-6 gap-y-6 text-center">
+          {windowWidth >= DESKTOP_BREAKPOINT ? (
+            <div className="flex justify-center items-start gap-x-16 lg:gap-x-24">
             {mindCategories.map((cat) => (
-              <div key={cat.key} onClick={() => scrollToCategory(cat.key)} className="flex flex-col items-center space-y-2 cursor-pointer group">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-200 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                  <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-contain bg-white" />
+                <div
+                  key={cat.key}
+                  onClick={() => scrollToCategory(cat.key)}
+                  className="flex flex-col items-center space-y-3 cursor-pointer group w-28 text-center"
+                >
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-red-400 transition-all duration-300 shadow-md group-hover:shadow-lg bg-white">
+                    <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-semibold text-gray-700 group-hover:text-red-600 text-sm capitalize">
+                    {cat.label}
+                  </span>
                 </div>
-                <span className="font-semibold text-gray-700 group-hover:text-red-600 text-xs sm:text-sm lg:text-base capitalize text-center">{cat.label}</span>
+              ))}
+            </div>
+          ) : (
+            <Slider {...productSliderSettings}>
+              {mindCategories.map((cat) => (
+                <div key={cat.key} className="px-2">
+                  <div
+                    onClick={() => scrollToCategory(cat.key)}
+                    className="flex flex-col items-center space-y-2 cursor-pointer group text-center"
+                  >
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm bg-white">
+                      <img src={cat.imageUrl} alt={cat.label} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="font-semibold text-gray-600 text-xs capitalize">{cat.label}</span>
+                  </div>
               </div>
             ))}
-          </div>
+            </Slider>
+          )}
         </div>
       </div>
 
@@ -496,6 +644,14 @@ function Home() {
           </div>
         </div>
       ))}
+
+      {windowWidth < DESKTOP_BREAKPOINT && (
+        <BottomNavBar
+            categories={mindCategories}
+            onCategoryClick={scrollToCategory}
+            onCartClick={() => navigate('/cart')} 
+        />
+      )}
     </div>
   );
 }
